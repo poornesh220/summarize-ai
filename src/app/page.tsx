@@ -21,12 +21,12 @@ export default function Home() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-12"
       >
-        <h1 className="text-5xl font-bold mb-4 tracking-tight">Understand Any Content Instantly</h1>
+        <h1 className="text-5xl font-bold mb-4 tracking-tight mt-10">Understand Any Content Instantly</h1>
         <p className="text-gray-400 text-lg">Upload PDFs, voice notes, or text and get AI-generated summaries in seconds.</p>
       </motion.div>
 
       <div className="w-full max-w-3xl bg-[#161616] border border-white/10 rounded-3xl p-2 shadow-2xl">
-        <div className="flex space-x-1 mb-6">
+        <div className="flex space-x-1 mb-6 p-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}

@@ -7,20 +7,20 @@ export async function POST(req: Request) {
   try {
     const { text, length } = await req.json();
 
-    const prompt = `You are an expert summarization assistant. 
-    Read the provided content and create a ${length} summary. 
-    Focus on key points, important facts, decisions, action items and conclusions.
-    
-    Content: ${text}`;
-
     const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [{ role: "system", content: prompt }],
-      temperature: 0.5,
+      model: "gpt-4o-mini", // Using a faster, cheaper model
+      messages: [
+        { 
+          role: "system", 
+          content: `You are an expert summarization assistant. Create a ${length} summary of the provided text.` 
+        },
+        { role: "user", content: text }
+      ],
     });
 
     return NextResponse.json({ summary: response.choices[0].message.content });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to generate summary" }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: "AI Failed" }, { status: 500 });
   }
 }

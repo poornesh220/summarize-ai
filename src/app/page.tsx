@@ -1,9 +1,9 @@
 "use client";
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import PDFTab from '@/components/tabs/PDFTab';
-import TextTab from '@/components/tabs/TextTab';
-import VoiceTab from '@/components/tabs/VoiceTab';
+import PDFTab from '../components/tabs/PDFTab';
+import TextTab from '../components/tabs/TextTab';
+import VoiceTab from '../components/tabs/VoiceTab';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('pdf');

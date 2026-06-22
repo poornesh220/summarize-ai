@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PDFTab from '../components/tabs/PDFTab';
 import TextTab from '../components/tabs/TextTab';
 import VoiceTab from '../components/tabs/VoiceTab';
+import ImageTab from '../components/tabs/ImageTab';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('pdf');
@@ -12,6 +13,7 @@ export default function Home() {
     { id: 'pdf', label: 'PDF Summary' },
     { id: 'text', label: 'Text Summary' },
     { id: 'voice', label: 'Voice Summary' },
+    { id: 'image', label: 'Image/Receipt' },
   ];
 
   return (
@@ -45,6 +47,7 @@ export default function Home() {
             {activeTab === 'pdf' && <PDFTab key="pdf" />}
             {activeTab === 'text' && <TextTab key="text" />}
             {activeTab === 'voice' && <VoiceTab key="voice" />}
+            {activeTab === 'image' && <ImageTab key="image" />} {/* <--- ADDED THIS LINE */}
           </AnimatePresence>
         </div>
       </div>

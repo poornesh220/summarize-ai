@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 export default function PDFTab() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState('');
+  const [summary, setSummary] = useState(''); // This holds the text to show on screen
   const [length, setLength] = useState('medium');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,6 +22,9 @@ export default function PDFTab() {
 
   const handleSummarize = async () => {
     if (!file) return toast.error("Please upload a PDF first");
+    
+    // Clear previous summary and start loading
+    setSummary('');
     setLoading(true);
     
     const formData = new FormData();
@@ -29,24 +32,32 @@ export default function PDFTab() {
     formData.append('length', length);
 
     try {
-      // Note: We changed this URL to /api/pdf to match the folder we will create
       const res = await fetch('/api/pdf', {
         method: 'POST',
         body: formData,
       });
 
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("The server crashed or the API route was not found. Please check your folder structure.");
+      // Check if the response is valid
+      if (!res.ok) {
+        throw new Error("Server crashed or API not found");
       }
 
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      
+      // DEBUG: Look at your browser console (F12) to see this!
+      console.log("PDF API Response:", data);
 
-      setSummary(data.summary);
-      toast.success("PDF Summarized!");
+      if (data.summary) {
+        setSummary(data.summary); // Set the state to show text on screen
+        toast.success("PDF Summarized!");
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        throw new Error("AI returned an empty response");
+      }
+
     } catch (err: any) {
-      console.error(err);
+      console.error("Frontend Error:", err);
       toast.error(err.message || "Failed to process PDF");
     } finally {
       setLoading(false);
@@ -55,6 +66,7 @@ export default function PDFTab() {
 
   return (
     <div className="space-y-6">
+      {/* Upload Area */}
       <div className="border-2 border-dashed border-white/10 rounded-3xl p-12 text-center hover:border-white/20 transition-all cursor-pointer relative bg-black/20">
         <input type="file" accept=".pdf" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
         <Upload className="mx-auto mb-4 text-gray-500" size={40} />
@@ -62,6 +74,7 @@ export default function PDFTab() {
         <p className="text-xs text-gray-600 mt-2">Maximum size: 50 MB</p>
       </div>
 
+      {/* Length Selector and Button */}
       <div className="flex flex-col sm:flex-row gap-4">
         <select 
           className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 outline-none text-gray-300 shadow-sm" 
@@ -81,14 +94,36 @@ export default function PDFTab() {
         </button>
       </div>
 
+      {/* Results Section */}
       {summary && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 bg-white/5 rounded-2xl border border-white/10 shadow-xl">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold flex items-center gap-2 text-white"><FileText size={18} className="text-blue-400"/> Summary</h3>
-            <button onClick={() => {navigator.clipboard.writeText(summary); toast.success("Copied!");}} className="p-2 hover:bg-white/10 rounded-lg text-gray-400"><Copy size={18}/></button>
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="p-6 bg-white/5 rounded-2xl border border-white/10 shadow-xl"
+        >
+          <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-4">
+            <h3 className="font-bold flex items-center gap-2 text-white">
+              <FileText size={18} className="text-blue-400"/> PDF Summary
+            </h3>
+            <button 
+              onClick={() => {navigator.clipboard.writeText(summary); toast.success("Copied!");}} 
+              className="p-2 hover:bg-white/10 rounded-lg text-gray-400"
+            >
+              <Copy size={18}/>
+            </button>
           </div>
-          <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{summary}</div>
+          
+          {/* The actual summary text */}
+          <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+            {summary}
+          </div>
         </motion.div>
+      )}
+
+      {loading && (
+        <div className="text-center py-10 text-gray-500 animate-pulse">
+           AI is analyzing your PDF... please wait.
+        </div>
       )}
     </div>
   );

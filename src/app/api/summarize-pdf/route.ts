@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import * as pdf from 'pdf-parse';
+import * as pdfParse from 'pdf-parse';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +23,8 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     // 1. Extract text, skipping the problematic "page rendering"
-    const data = await pdf(buffer, {
+    const parsePdf: any = (pdfParse as any).default ?? pdfParse;
+    const data = await parsePdf(buffer, {
         pagerender: () => "" 
     });
     

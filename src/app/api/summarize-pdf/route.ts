@@ -1,8 +1,10 @@
-export const runtime = 'nodejs'; // Add this line!
-
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import * as pdf from 'pdf-parse';
+
+// We use 'require' because pdf-parse is an older library
+const pdf = require('pdf-parse');
+
+export const runtime = 'nodejs';
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -16,49 +18,43 @@ export async function POST(req: Request) {
     const length = formData.get('length') || 'medium';
 
     if (!file) {
-      return NextResponse.json({ error: "No file found in request" }, { status: 400 });
+      return NextResponse.json({ error: "No file found" }, { status: 400 });
     }
 
-    // 1. Convert File to Buffer
+    // 1. Convert to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 2. Extract Text from PDF
+    // 2. Extract Text using the legacy-safe method
     let extractedText = '';
     try {
-      // pdf-parse may not expose a default export in its ESM build; use the default export if present, otherwise call the namespace as a function
-      const data = await ((pdf as any).default ? (pdf as any).default(buffer) : (pdf as any)(buffer));
+      const data = await pdf(buffer);
       extractedText = data.text;
-    } catch (pdfError: any) {
-      console.error("PDF Parsing Error:", pdfError);
-      return NextResponse.json({ error: "Failed to read the PDF content. Is it password protected?" }, { status: 500 });
+    } catch (e) {
+      console.error("PDF Parse Error:", e);
+      return NextResponse.json({ error: "Failed to read PDF structure" }, { status: 500 });
     }
 
-    if (!extractedText || extractedText.trim().length < 20) {
-      return NextResponse.json({ error: "This PDF seems to be an image/scan. AI cannot read text from images yet." }, { status: 400 });
+    if (!extractedText || extractedText.length < 20) {
+      return NextResponse.json({ error: "PDF is empty or an image." }, { status: 400 });
     }
 
-    // 3. Send to AI
-    try {
-      const response = await groq.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { 
-            role: "system", 
-            content: `You are an expert summarizer. Provide a ${length} summary of the following text, focusing on key historical events, geography, and important figures.` 
-          },
-          { role: "user", content: extractedText.slice(0, 12000) } 
-        ],
-      });
+    // 3. Summarize with Groq
+    const response = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        { 
+          role: "system", 
+          content: `Summarize this text in a ${length} format. Focus on facts.` 
+        },
+        { role: "user", content: extractedText.slice(0, 15000) }
+      ],
+    });
 
-      return NextResponse.json({ summary: response.choices[0].message.content });
-    } catch (aiError: any) {
-      console.error("AI Error:", aiError);
-      return NextResponse.json({ error: "AI failed to generate summary: " + aiError.message }, { status: 500 });
-    }
+    return NextResponse.json({ summary: response.choices[0].message.content });
 
   } catch (error: any) {
-    console.error("Global Error:", error);
-    return NextResponse.json({ error: "Critical Error: " + error.message }, { status: 500 });
+    console.error("Global Error:", error.message);
+    return NextResponse.json({ error: "Server Error: " + error.message }, { status: 500 });
   }
 }

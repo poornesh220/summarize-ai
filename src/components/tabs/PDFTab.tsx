@@ -28,11 +28,20 @@ export default function PDFTab() {
     formData.append('file', file);
     formData.append('length', length);
 
-    try {
+try {
       const res = await fetch('/api/summarize-pdf', {
         method: 'POST',
         body: formData,
       });
+
+      // --- NEW DEBUGGING BLOCK ---
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const textError = await res.text();
+        console.error("Server returned non-JSON response:", textError);
+        throw new Error("Server error: The API route was not found or crashed. Check folder naming!");
+      }
+      // ---------------------------
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -41,7 +50,8 @@ export default function PDFTab() {
       toast.success("PDF Summarized!");
     } catch (err: any) {
       toast.error(err.message || "Failed to process PDF");
-    } finally {
+    }
+     finally {
       setLoading(false);
     }
   };

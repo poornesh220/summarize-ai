@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'; // Add this line!
+
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import * as pdf from 'pdf-parse';

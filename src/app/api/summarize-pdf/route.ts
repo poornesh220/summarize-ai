@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import pdf from 'pdf-parse';
+import * as pdf from 'pdf-parse';
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
     // 2. Extract Text from PDF
     let extractedText = '';
     try {
-      const data = await pdf(buffer);
+      // pdf-parse may not expose a default export in its ESM build; use the default export if present, otherwise call the namespace as a function
+      const data = await ((pdf as any).default ? (pdf as any).default(buffer) : (pdf as any)(buffer));
       extractedText = data.text;
     } catch (pdfError: any) {
       console.error("PDF Parsing Error:", pdfError);

@@ -1,10 +1,24 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// We use 'require' because pdf-parse is an older library
-const pdf = require('pdf-parse');
+// 1. THE FIX: Mock missing browser globals for pdf-parse
+if (typeof global.DOMMatrix === 'undefined') {
+  (global as any).DOMMatrix = class {};
+}
+if (typeof global.ImageData === 'undefined') {
+  (global as any).ImageData = class {};
+}
+if (typeof global.Path2D === 'undefined') {
+  (global as any).Path2D = class {};
+}
 
+// 2. Force Node.js runtime and dynamic behavior
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+// 3. Import pdf-parse INSIDE the request to prevent build-time crashes
+// We use require() here because it's safer for this specific library
+const pdf = require('pdf-parse');
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -21,14 +35,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file found" }, { status: 400 });
     }
 
-    // 1. Convert to Buffer
+    // Convert to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // 2. Extract Text using the legacy-safe method
+    // Extract Text
     let extractedText = '';
     try {
-      const data = await pdf(buffer);
+      // We pass a second argument to disable the "rendering" that causes the canvas errors
+      const data = await pdf(buffer, { pagerender: () => "" });
       extractedText = data.text;
     } catch (e) {
       console.error("PDF Parse Error:", e);
@@ -36,16 +51,16 @@ export async function POST(req: Request) {
     }
 
     if (!extractedText || extractedText.length < 20) {
-      return NextResponse.json({ error: "PDF is empty or an image." }, { status: 400 });
+      return NextResponse.json({ error: "PDF is empty or contains only images." }, { status: 400 });
     }
 
-    // 3. Summarize with Groq
+    // Summarize with Groq
     const response = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
         { 
           role: "system", 
-          content: `Summarize this text in a ${length} format. Focus on facts.` 
+          content: `You are an expert summarizer. Summarize this content in a ${length} format.` 
         },
         { role: "user", content: extractedText.slice(0, 15000) }
       ],

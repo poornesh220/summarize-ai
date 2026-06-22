@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize Groq for Transcription
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 export async function POST(req: Request) {
-  const formData = await req.formData();
-  const file = formData.get('file') as File;
+  try {
+    const formData = await req.formData();
+    const file = formData.get('file') as File;
 
-  if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
 
-  const transcription = await openai.audio.transcriptions.create({
-    file: file,
-    model: "whisper-1",
-  });
+    if (!process.env.GROQ_API_KEY) {
+      return NextResponse.json({ error: "Groq Key missing" }, { status: 500 });
+    }
 
-  return NextResponse.json({ text: transcription.text });
+    // Use Groq's Whisper model (Free and fast!)
+    const transcription = await groq.audio.transcriptions.create({
+      file: file,
+      model: "whisper-large-v3",
+    });
+
+    return NextResponse.json({ text: transcription.text });
+  } catch (error: any) {
+    console.error("Transcription Error:", error.message);
+    return NextResponse.json({ error: "Transcription failed" }, { status: 500 });
+  }
 }

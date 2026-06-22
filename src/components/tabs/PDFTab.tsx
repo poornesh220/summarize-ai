@@ -28,20 +28,17 @@ export default function PDFTab() {
     formData.append('file', file);
     formData.append('length', length);
 
-try {
-      const res = await fetch('/api/summarize-pdf', {
+    try {
+      // Note: We changed this URL to /api/pdf to match the folder we will create
+      const res = await fetch('/api/pdf', {
         method: 'POST',
         body: formData,
       });
 
-      // --- NEW DEBUGGING BLOCK ---
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        const textError = await res.text();
-        console.error("Server returned non-JSON response:", textError);
-        throw new Error("Server error: The API route was not found or crashed. Check folder naming!");
+        throw new Error("The server crashed or the API route was not found. Please check your folder structure.");
       }
-      // ---------------------------
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -49,9 +46,9 @@ try {
       setSummary(data.summary);
       toast.success("PDF Summarized!");
     } catch (err: any) {
+      console.error(err);
       toast.error(err.message || "Failed to process PDF");
-    }
-     finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -67,7 +64,7 @@ try {
 
       <div className="flex flex-col sm:flex-row gap-4">
         <select 
-          className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 outline-none text-gray-300" 
+          className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 outline-none text-gray-300 shadow-sm" 
           value={length} 
           onChange={(e)=>setLength(e.target.value)}
         >
@@ -78,7 +75,7 @@ try {
         <button 
           onClick={handleSummarize} 
           disabled={loading} 
-          className="bg-white text-black px-8 py-3 font-bold rounded-xl hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center gap-2"
+          className="bg-white text-black px-8 py-3 font-bold rounded-xl hover:bg-gray-200 disabled:opacity-50 flex items-center justify-center gap-2 transition-all active:scale-95"
         >
           {loading ? <Loader2 className="animate-spin" /> : <><Sparkles size={18}/> Generate</>}
         </button>
@@ -88,9 +85,7 @@ try {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 bg-white/5 rounded-2xl border border-white/10 shadow-xl">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold flex items-center gap-2 text-white"><FileText size={18} className="text-blue-400"/> Summary</h3>
-            <div className="flex gap-2">
-              <button onClick={() => {navigator.clipboard.writeText(summary); toast.success("Copied!");}} className="p-2 hover:bg-white/10 rounded-lg text-gray-400"><Copy size={18}/></button>
-            </div>
+            <button onClick={() => {navigator.clipboard.writeText(summary); toast.success("Copied!");}} className="p-2 hover:bg-white/10 rounded-lg text-gray-400"><Copy size={18}/></button>
           </div>
           <div className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{summary}</div>
         </motion.div>

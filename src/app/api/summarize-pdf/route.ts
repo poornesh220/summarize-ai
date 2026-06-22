@@ -1,24 +1,10 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// 1. THE FIX: Mock missing browser globals for pdf-parse
-if (typeof global.DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class {};
-}
-if (typeof global.ImageData === 'undefined') {
-  (global as any).ImageData = class {};
-}
-if (typeof global.Path2D === 'undefined') {
-  (global as any).Path2D = class {};
-}
-
-// 2. Force Node.js runtime and dynamic behavior
+// Force Node.js runtime
 export const runtime = 'nodejs';
+// Prevent Next.js from trying to pre-render this route
 export const dynamic = 'force-dynamic';
-
-// 3. Import pdf-parse INSIDE the request to prevent build-time crashes
-// We use require() here because it's safer for this specific library
-const pdf = require('pdf-parse');
 
 const groq = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
@@ -27,6 +13,9 @@ const groq = new OpenAI({
 
 export async function POST(req: Request) {
   try {
+    // We import it INSIDE the function so it doesn't load during Vercel's build process
+    const pdf = require('pdf-parse-fork');
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const length = formData.get('length') || 'medium';
@@ -35,32 +24,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file found" }, { status: 400 });
     }
 
-    // Convert to Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     // Extract Text
     let extractedText = '';
     try {
-      // We pass a second argument to disable the "rendering" that causes the canvas errors
-      const data = await pdf(buffer, { pagerender: () => "" });
+      // The second argument { pagerender: false } is key to avoiding canvas errors
+      const data = await pdf(buffer, { 
+        pagerender: function() { return ""; } 
+      });
       extractedText = data.text;
-    } catch (e) {
-      console.error("PDF Parse Error:", e);
-      return NextResponse.json({ error: "Failed to read PDF structure" }, { status: 500 });
+    } catch (e: any) {
+      console.error("PDF extraction error:", e.message);
+      return NextResponse.json({ error: "Failed to read PDF content" }, { status: 500 });
     }
 
     if (!extractedText || extractedText.length < 20) {
-      return NextResponse.json({ error: "PDF is empty or contains only images." }, { status: 400 });
+      return NextResponse.json({ error: "PDF is empty or an image/scan." }, { status: 400 });
     }
 
-    // Summarize with Groq
+    // AI Summarization
     const response = await groq.chat.completions.create({
       model: "llama-3.1-8b-instant",
       messages: [
         { 
           role: "system", 
-          content: `You are an expert summarizer. Summarize this content in a ${length} format.` 
+          content: `You are an expert summarizer. Provide a ${length} summary focusing on facts and key takeaways.` 
         },
         { role: "user", content: extractedText.slice(0, 15000) }
       ],

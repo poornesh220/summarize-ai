@@ -34,6 +34,7 @@ queries = {
     "2. All Extracted Topics": "SELECT filename, summary FROM extractions WHERE type IN ('pdf', 'voice')",
     "3. Financials (Receipts)": "SELECT filename, structured_data FROM extractions WHERE type='image' AND summary LIKE '%Total%'",
     "4. Search 'India'": "SELECT type, filename FROM extractions WHERE summary LIKE '%India%'"
+    
 }
 
 for title, sql in queries.items():
